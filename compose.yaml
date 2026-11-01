@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: intellihire
+      POSTGRES_USER: intellihire
+      POSTGRES_PASSWORD: intellihire_dev_only
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intellihire -d intellihire"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://intellihire:intellihire_dev_only@db:5432/intellihire
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports: ["5173:5173"]
+    depends_on: [api]
+volumes:
+  pgdata:
